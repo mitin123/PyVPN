@@ -8,8 +8,8 @@ class InvalidConfigException(VPNException):
 
 class VPNClientConfig(object):
     __conf_validators = [
-        lambda c: subnet in c,
-        lambda c: netmask in c,
+        lambda c: "subnet" in c,
+        lambda c: "netmask" in c,
     ]
     
     def __init__(self, path_to_config=None):
@@ -26,8 +26,8 @@ class VPNClientConfig(object):
             ex.msg = "configuration file reading failed"
             raise ex
     
-    def validate():
-        for validator in __conf_validators:
+    def validate(self):
+        for validator in VPNClientConfig.__conf_validators:
             if not validator(self.config):
                 ex = InvalidConfigException()
                 ex.msg = "wtf"
@@ -37,4 +37,4 @@ class VPNClientConfig(object):
         if attr in self.config:
             return self.config[attr]
         else:
-            return super(A, self).__getattr__(attr)
+            return super(VPNClientConfig, self).__getattr__(attr)

@@ -1,5 +1,4 @@
-Source: PyVPNClient
-Section: yabs
+Source: PyVPN
 Priority: extra
 Maintainer: Aleksander Mitin <amitin@yandex-team.ru>
 Build-Depends:
@@ -9,8 +8,8 @@ Build-Depends:
 Standards-Version: 3.7.2
 XS-Python-Version: >=2.5
 
-Package: PyVPNClient
+Package: PyVPN
 Depends:
     PyYaml,
 Architecture: all
-Description: Implementation of VPN client for PyVPN server
+Description: PyVPN client/server

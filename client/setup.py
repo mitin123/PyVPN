@@ -6,10 +6,10 @@ from distutils.core import setup
 import os
 
 packages = {
-    'pyvpn.client' : 'PyVPNClient',
+    'PyVPN' : 'PyVPN',
 }
 
-setup(name='PyVPNClient',
+setup(name='PyVPN',
       version='1.0',
       description='Implementation of VPN client for PyVPN server',
       packages = packages,
@@ -18,7 +18,7 @@ setup(name='PyVPNClient',
             (
                 "/etc/pyvpn",
                 [
-                    'PyVPNClient/client.conf',
+                    'PyVPN/client.conf',
                 ]
             ),
       ],
