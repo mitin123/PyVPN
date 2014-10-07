@@ -2,7 +2,9 @@ import os
 import fcntl
 import struct
 
-from client.PyVPNClient.vpnexcept import VPNException
+from subprocess import Popen, call
+
+from vpnexcept import VPNException
 
 
 class TunTapException(VPNException):
@@ -28,10 +30,17 @@ class Tun(TunTap):
         ifs = fcntl.ioctl(f, TUNSETIFF, struct.pack("16sH", self.name, TUNMODE))
         self.ifname = ifs[:16].strip("\x00")
         return f
+
+    def configure(self, subnet=None):
+        if subnet is not None:
+            if call("ip link set %s up" % self.name, shell=True) != 0:
+                raise TunTapException("can`t set %s up" % self.name)
+            if call("ip addr add %s dev %s" % (subnet, self.name), shell=True) != 0:
+                raise TunTapException("can`t set subnet for interface %s" % self.name)
+
     
     def read(self):
-        self.fd.read()
+        pass
     
     def write(self):
         pass
-    

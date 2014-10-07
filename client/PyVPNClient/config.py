@@ -1,6 +1,6 @@
 import yaml
 
-from client.PyVPNClient.vpnexcept import VPNException
+from vpnexcept import VPNException
 
 
 class InvalidConfigException(VPNException):

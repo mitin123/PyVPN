@@ -1,22 +1,27 @@
 import select
 
 from tuntap import Tun
-from client.PyVPNClient.utils import create_logger
+from utils import create_logger
 from net import VPNServerConnection
 from config import VPNClientConfig, InvalidConfigException
 
 class VPNClient(object):
     def __init__(self, tt=None):
         self.logger = create_logger(name="PyVPN Client Logger", file="./vpn_client.log")
+
         try:
-            self.config = VPNClientConfig(path_to_config="./vpn.conf")
+            self.config = VPNClientConfig(path_to_config="./client.conf")
         except InvalidConfigException as e:
             self.logger.error("loading config failed: %s" % e.msg)
             exit(-1)
 
+        # tunneling connection to vpn server
         self.net = VPNServerConnection(host=self.config.server["host"], port=self.config.server["port"])
+
         self.tt = Tun(name="tun0")
-    
+        self.tt.configure(subnet=self.config.subnet)
+
+    # simple bridge mode, just for testing purposes
     def start_bridge(self):
         fds = [self.net.sock.fileno(), self.tt.fd.fileno()]
         epoll = select.epoll()
@@ -40,4 +45,5 @@ class VPNClient(object):
 
 if __name__ == "__main__":
     client = VPNClient()
-    client.start_bridge()
+    #client.start_bridge()
+    raw_input()
