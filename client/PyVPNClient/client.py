@@ -1,7 +1,7 @@
 import select
 
 from tuntap import Tun
-from utils import create_logger
+from client.PyVPNClient.utils import create_logger
 from net import VPNServerConnection
 from config import VPNClientConfig, InvalidConfigException
 
@@ -13,7 +13,7 @@ class VPNClient(object):
         except InvalidConfigException as e:
             self.logger.error("loading config failed: %s" % e.msg)
             exit(-1)
-                
+
         self.net = VPNServerConnection(host=self.config.server["host"], port=self.config.server["port"])
         self.tt = Tun(name="tun0")
     

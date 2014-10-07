@@ -1,0 +1,2 @@
+pyvpn:pyvpn 755 /etc/pyvpn
+pyvpn:pyvpn 755 /var/log/pyvpn

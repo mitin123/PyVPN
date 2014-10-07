@@ -1,0 +1,12 @@
+USER=pyvpn
+
+if ! getent passwd | grep -q "^$USER:"; then
+   echo -n "Adding system user $USER.."
+   adduser --quiet \
+           --system \
+           --ingroup $USER \
+           --no-create-home \
+           --disabled-password \
+           $USER 2>/dev/null || true
+   echo "..done"
+fi

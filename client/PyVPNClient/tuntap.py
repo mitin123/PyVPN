@@ -1,7 +1,9 @@
 import os
 import fcntl
 import struct
-from vpnexcept import VPNException
+
+from client.PyVPNClient.vpnexcept import VPNException
+
 
 class TunTapException(VPNException):
     pass

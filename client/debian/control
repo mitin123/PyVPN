@@ -1,0 +1,16 @@
+Source: PyVPNClient
+Section: yabs
+Priority: extra
+Maintainer: Aleksander Mitin <amitin@yandex-team.ru>
+Build-Depends:
+    debhelper (>= 5),
+    python,
+    python-dev,
+Standards-Version: 3.7.2
+XS-Python-Version: >=2.5
+
+Package: PyVPNClient
+Depends:
+    PyYaml,
+Architecture: all
+Description: Implementation of VPN client for PyVPN server
