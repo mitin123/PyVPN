@@ -31,7 +31,7 @@ class VPNServer(object):
 
             client_connection = VPNClientConnection(conn)
 
-            ip = struct.pack("i", conn.recv(4))
+            ip = struct.unpack("i", conn.recv(4))[0]
 
             print "Client connected by", addr, ip
 
