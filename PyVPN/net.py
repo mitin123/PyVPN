@@ -9,7 +9,7 @@ class VPNConnection(object):
         src = struct.unpack("i", self.sock.recv(4))[0]
         dst = struct.unpack("i", self.sock.recv(4))[0]
         data = self.sock.recv(size)
-        return Packet(data, src=src, dst=dst)
+        return Packet(data, size=size, src=src, dst=dst)
 
     def write_packet(self, packet):
         print "write net"
