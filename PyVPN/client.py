@@ -9,7 +9,7 @@ from net import VPNServerConnection
 from config import VPNClientConfig, InvalidConfigException
 
 class VPNClient(object):
-    def __init__(self, tt=None):
+    def __init__(self):
         self.logger = create_logger(name="PyVPN Client Logger", file=os.path.join(".", "client.log"))
 
         try:
@@ -37,10 +37,10 @@ class VPNClient(object):
     # simple bridge mode, just for testing purposes
     def start_bridge(self):
 
-        #g1 = spawn(self._forward_data_from_net)
+        g1 = spawn(self._forward_data_from_net)
         g2 = spawn(self._forward_data_from_tun)
 
-        #g1.join()
+        g1.join()
         g2.join()
 
         #self.net.sock.fileno(), self.tt.fd.fileno()

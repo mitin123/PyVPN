@@ -44,17 +44,22 @@ class Tun(TunTap):
         #print ntohs(res[2]), res[2]
         #print map(ord, res[5:])
         #return
-        #print "read tun"
-        first_32bit = self.fd.read(8)
-        trash, lpart, rpart = struct.unpack("iHH", first_32bit)
+        print "read tun"
+        first_32bit = self.fd.read(24)
+        trash, lpart, rpart, f1, f2, src, dst = struct.unpack("iHHiiii", first_32bit)
         print "read tun end"
+
         size = ntohs(rpart)
-        print rpart
-        print size, type(size)
-        data = struct.pack("HH", lpart, rpart)
-        data += self.fd.read(56)
-        print "".join([a for a in data])
-        return Packet(data, size)
+
+        print "size =", size
+
+        from gevent.socket import inet_ntop, AF_INET
+        print "dst =", inet_ntop(AF_INET, struct.pack("i", dst))
+
+        data = struct.pack("HHiiii", lpart, rpart, f1, f2, src, dst)
+        data += self.fd.read(size-20)
+
+        return Packet(data, size=size, dst=dst)
 
     def write_packet(self, packet):
         self.fd.write(packet.data)
