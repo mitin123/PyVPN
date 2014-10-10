@@ -1,6 +1,5 @@
 import os
-import select
-
+from socket import AF_INET, inet_pton
 from gevent import spawn
 
 from tuntap import Tun
@@ -21,8 +20,10 @@ class VPNClient(object):
         # tunneling connection to vpn server
         self.net = VPNServerConnection(host=self.config.server["host"], port=self.config.server["port"])
 
+        self.net.sock.send(inet_pton(AF_INET, self.config.ip))
+
         self.tt = Tun(name="tun0")
-        self.tt.configure(subnet=self.config.subnet)
+        self.tt.configure(ip=self.config.ip, mask=self.config.mask)
 
     def _forward_data_from_net(self):
         print "start _forward_data_from_net"

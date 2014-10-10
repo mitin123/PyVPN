@@ -31,11 +31,11 @@ class Tun(TunTap):
         self.ifname = ifs[:16].strip("\x00")
         return f
 
-    def configure(self, subnet=None):
-        if subnet is not None:
+    def configure(self, ip=None, mask=None):
+        if ip is not None and mask is not None:
             if call("ip link set %s up" % self.name, shell=True) != 0:
                 raise TunTapException("can`t set %s up" % self.name)
-            if call("ip addr add %s dev %s" % (subnet, self.name), shell=True) != 0:
+            if call("ip addr add %s/%s dev %s" % (ip, mask, self.name), shell=True) != 0:
                 raise TunTapException("can`t set subnet for interface %s" % self.name)
 
     def read_packet(self):
@@ -59,7 +59,7 @@ class Tun(TunTap):
         data = struct.pack("HHiiii", lpart, rpart, f1, f2, src, dst)
         data += self.fd.read(size-20)
 
-        return Packet(data, size=size, dst=dst)
+        return Packet(data, size=size, src=src, dst=dst)
 
     def write_packet(self, packet):
         self.fd.write(packet.data)

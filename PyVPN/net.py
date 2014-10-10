@@ -6,13 +6,15 @@ class VPNConnection(object):
     def read_packet(self):
         print "read net"
         size = struct.unpack("H", self.sock.recv(2))[0]
+        src = struct.unpack("i", self.sock.recv(4))[0]
         dst = struct.unpack("i", self.sock.recv(4))[0]
         data = self.sock.recv(size)
-        return Packet(data, dst=dst)
+        return Packet(data, src=src, dst=dst)
 
     def write_packet(self, packet):
         print "write net"
         self.sock.send(struct.pack("H", packet.size))
+        self.sock.send(struct.pack("i", packet.src))
         self.sock.send(struct.pack("i", packet.dst))
         self.sock.send(packet.data)
         print "write net end"
