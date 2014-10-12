@@ -1,4 +1,3 @@
-import select
 import struct
 from gevent import spawn, socket
 
@@ -24,6 +23,7 @@ class VPNServer(object):
         except:
             print "socket error"
             exit(1)
+
         s.listen(1024)
 
         while True:

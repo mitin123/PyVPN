@@ -53,7 +53,7 @@ class Tun(TunTap):
 
         print "size =", size
 
-        from gevent.socket import inet_ntop, AF_INET
+        from socket import inet_ntop, AF_INET
         print "dst =", inet_ntop(AF_INET, struct.pack("i", dst))
 
         data = struct.pack("HHiiii", lpart, rpart, f1, f2, src, dst)
