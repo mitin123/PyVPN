@@ -1,5 +1,5 @@
 import struct
-from gevent.socket import inet_ntop, AF_INET, ntohs
+from gevent.socket import ntohl
 
 class Packet(object):
     def __init__(self, data, header=None):
@@ -42,8 +42,8 @@ class Packet(object):
             "ttl" : c5 >> 8,
             "protocol" : c5 & 255,
             "checksum" : c6,
-            "src": src,
-            "dst" : dst,
+            "src": ntohl(src),
+            "dst" : ntohl(dst),
         }
 
         if header["ihl"] > 5:
