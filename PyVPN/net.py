@@ -5,7 +5,7 @@ from packet import Packet
 class VPNConnection(object):
     def read_packet(self):
         print "read net"
-        size, src, dst = struct.unpack("Hii", self.sock.recv(10))[0]
+        size, src, dst = struct.unpack("Hii", self.sock.recv(struct.calcsize("Hii")))
         data = self.sock.recv(size)
         return Packet(data, size=size, src=src, dst=dst)
 

@@ -1,9 +1,9 @@
-import os
 import fcntl
 import struct
 
-from subprocess import Popen, call
-from gevent.socket import wait_readwrite, ntohs
+from subprocess import call
+from socket import ntohs
+from gevent.os import tp_read, tp_write
 
 from vpnexcept import VPNException
 from packet import Packet
@@ -26,7 +26,7 @@ class Tun(TunTap):
     def open(self):
         TUNMODE = IFF_TUN
         f = open("/dev/net/tun", "rw")
-        wait_readwrite(f.fileno()) # make non-block socket, block greenlet only
+        #make_nonblocking(f) # make non-block socket, block greenlet only
         ifs = fcntl.ioctl(f, TUNSETIFF, struct.pack("16sH", self.name, TUNMODE))
         self.ifname = ifs[:16].strip("\x00")
         return f
@@ -45,7 +45,7 @@ class Tun(TunTap):
         #print map(ord, res[5:])
         #return
         print "read tun"
-        first_32bit = self.fd.read(24)
+        first_32bit = tp_read(self.fd.fileno(), 24)
         trash, lpart, rpart, f1, f2, src, dst = struct.unpack("iHHiiii", first_32bit)
         print "read tun end"
 
@@ -57,9 +57,9 @@ class Tun(TunTap):
         print "dst =", inet_ntop(AF_INET, struct.pack("i", dst))
 
         data = struct.pack("HHiiii", lpart, rpart, f1, f2, src, dst)
-        data += self.fd.read(size-20)
+        data += tp_read(self.fd.fileno(), size-20)
 
         return Packet(data, size=size, src=src, dst=dst)
 
     def write_packet(self, packet):
-        self.fd.write(packet.data)
+        tp_write(self.fd.fileno(), packet.data)
