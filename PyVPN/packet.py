@@ -16,13 +16,19 @@ class Packet(object):
         return repr(self.header)
 
     @staticmethod
-    def read_from_socket(socket, header_safe=False):
+    def read_from_socket(socket, header_safe=False, tun=False):
         ip_header_format = "!HHHHHHii"
+        if tun:
+            ip_header_format = "!iHHHHHHii"
         ip_header_size = struct.calcsize(ip_header_format)
 
         raw_header = socket.recv(ip_header_size)
 
-        c1, c2, c3, c4, c5, c6, src, dst = struct.unpack(ip_header_format, raw_header)
+        if tun:
+            trash, c1, c2, c3, c4, c5, c6, src, dst = struct.unpack(ip_header_format, raw_header)
+        else:
+            c1, c2, c3, c4, c5, c6, src, dst = struct.unpack(ip_header_format, raw_header)
+
 
         header = {
             "ver" : c1 >> 12,

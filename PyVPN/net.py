@@ -9,6 +9,7 @@ class VPNConnection(object):
         return packet
 
     def write_packet(self, packet):
+
         self.sock.send(packet.data)
         print "write to net %s" % packet
 
