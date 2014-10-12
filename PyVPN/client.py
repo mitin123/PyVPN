@@ -44,29 +44,6 @@ class VPNClient(object):
         g1.join()
         g2.join()
 
-        #self.net.sock.fileno(), self.tt.fd.fileno()
-
-        """
-        fds = [self.net.sock.fileno(), self.tt.fd.fileno()]
-        epoll = select.epoll()
-        epoll.register(self.net.sock.fileno(), select.EPOLLIN)
-        epoll.register(self.tt.fd.fileno(), select.EPOLLIN)
-
-        try:
-            connections = {}; requests = {}; responses = {}
-            while True:
-                events = epoll.poll(1)
-                for fileno, event in events:
-                    if fileno == self.net.sock.fileno():
-                        pass # read from network interface, write to tunneling device (forward)
-                    if fileno == self.tt.fd.fileno():
-                        pass # read from tunneling device, write to network interface
-        finally:
-            epoll.unregister(self.net.sock.fileno())
-            epoll.unregister(self.tt.fd.fileno())
-            epoll.close()
-            self.net.close()
-        """
 
 if __name__ == "__main__":
     client = VPNClient()
