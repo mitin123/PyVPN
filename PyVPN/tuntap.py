@@ -46,24 +46,20 @@ class Tun(TunTap):
         #print ntohs(res[2]), res[2]
         #print map(ord, res[5:])
         #return
-        print "read tun"
         first_32bit = tp_read(self.fd, 24)
         trash, lpart, rpart, f1, f2, src, dst = struct.unpack("iHHiiii", first_32bit)
-        print "read tun end"
 
         size = ntohs(rpart)
 
-        print "size =", size
-
-        from socket import inet_ntop, AF_INET
-        print "dst =", inet_ntop(AF_INET, struct.pack("i", dst))
-
-        data = struct.pack("HHiiii", lpart, rpart, f1, f2, src, dst)
+        data = struct.pack("iHHiiii", trash, lpart, rpart, f1, f2, src, dst)
         data += tp_read(self.fd, size-20)
 
-        return Packet(data, size=size, src=src, dst=dst)
+        packet = Packet(data, size=size+4, src=src, dst=dst)
+
+        print "read from tun %s" % packet
+
+        return packet
 
     def write_packet(self, packet):
-        print "write tun"
         tp_write(self.fd, packet.data)
-        print "write tun end"
+        print "write tun %s" % packet

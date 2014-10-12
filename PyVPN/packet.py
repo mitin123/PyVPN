@@ -13,3 +13,6 @@ class Packet(object):
 
     def src_asstring(self):
         return inet_ntop(AF_INET, struct.pack("i", self.src))
+
+    def __repr__(self):
+        return "(size=%s src=%s dst=%s)" % (self.size, self.src_asstring(), self.dst_asstring())
