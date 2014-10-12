@@ -9,6 +9,9 @@ from gevent.os import tp_read, tp_write
 from vpnexcept import VPNException
 from packet import Packet
 
+from adapters import FileToSocketAdapter
+from  nonblock import NonblockFileWrapper
+
 class TunTapException(VPNException):
     pass
 
@@ -22,16 +25,14 @@ class TunTap(object):
 class Tun(TunTap):
     def __init__(self, name="tun0"):
         self.name = name
-        self.fd = self.open()
+        self.sock = self.open() # support socket interface recv and send
     
     def open(self):
         TUNMODE = IFF_TUN
-        #f = open("/dev/net/tun", "rw")
         f = os.open("/dev/net/tun", os.O_RDWR)
-        #make_nonblocking(f) # make non-block socket, block greenlet only
         ifs = fcntl.ioctl(f, TUNSETIFF, struct.pack("16sH", self.name, TUNMODE))
         self.ifname = ifs[:16].strip("\x00")
-        return f
+        return FileToSocketAdapter(NonblockFileWrapper(f))
 
     def configure(self, ip=None, mask=None):
         if ip is not None and mask is not None:
@@ -41,25 +42,11 @@ class Tun(TunTap):
                 raise TunTapException("can`t set subnet for interface %s" % self.name)
 
     def read_packet(self):
-        #res =  struct.unpack("iHHiicccccccc", self.fd.read(24))
-        #print ntohs(res[0]), res[0]
-        #print ntohs(res[2]), res[2]
-        #print map(ord, res[5:])
-        #return
-        first_32bit = tp_read(self.fd, 24)
-        trash, lpart, rpart, f1, f2, src, dst = struct.unpack("iHHiiii", first_32bit)
-
-        size = ntohs(rpart)
-
-        data = struct.pack("iHHiiii", trash, lpart, rpart, f1, f2, src, dst)
-        data += tp_read(self.fd, size-20)
-
-        packet = Packet(data, size=size+4, src=src, dst=dst)
-
+        self.sock.recv(4)
+        packet = Packet.read_from_socket(self.sock, header_safe=True)
         print "read from tun %s" % packet
-
         return packet
 
     def write_packet(self, packet):
-        tp_write(self.fd, packet.data)
-        print "write tun %s" % packet
+        self.sock.send(packet.data)
+        print "write to tun %s" % packet

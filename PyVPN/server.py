@@ -41,10 +41,7 @@ class VPNServer(object):
 
     def handle(self, client_connection):
         while True:
-            print client_connection.sock
             packet = client_connection.read_packet()
-            print "src = ", packet.src_asstring()
-            print "dst = ", packet.dst_asstring()
             if packet.dst in self.connections:
                 self.connections[packet.dst].write_packet(packet)
                 print "packet was sent"
