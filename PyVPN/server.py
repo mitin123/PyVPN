@@ -42,8 +42,9 @@ class VPNServer(object):
     def handle(self, client_connection):
         while True:
             packet = client_connection.read_packet()
-            if packet.dst in self.connections:
-                self.connections[packet.dst].write_packet(packet)
+            dst_ip = packet.header["dst"]
+            if dst_ip in self.connections:
+                self.connections[dst_ip].write_packet(packet)
                 print "packet was sent"
             else:
                 print "!!! client for this packet not found"
