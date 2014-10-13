@@ -17,13 +17,18 @@ class Packet(object):
 
     @staticmethod
     def read_from_socket(socket, header_safe=False, tun=False):
+        offset=0
+        if tun:
+            offset = 4
+
         ip_header_format = "!HHHHHHii"
 
         ip_header_size = struct.calcsize(ip_header_format)
 
-        raw_header = socket.recv(ip_header_size)
+        raw_header = socket.recv(ip_header_size+offset)[offset:]
 
         c1, c2, c3, c4, c5, c6, src, dst = struct.unpack(ip_header_format, raw_header)
+
 
         header = {
             "ver" : c1 >> 12,
