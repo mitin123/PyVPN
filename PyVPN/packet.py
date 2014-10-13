@@ -53,7 +53,10 @@ class Packet(object):
 
         data = ""
         if header_safe:
-            data += raw_header
+            if tun:
+                data += raw_header[4:]
+            else:
+                data += raw_header
         data += socket.recv(data_size)
 
         return Packet(data, header=header)
