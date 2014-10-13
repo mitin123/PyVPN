@@ -47,16 +47,17 @@ class Tun(TunTap):
         return packet
 
     def write_packet(self, packet):
-        src_port, dst_port, seq, ack, flags, ws = struct.unpack("!HHIIHH", packet.data[0:16])
-        print "*"*10
-        print "tcp: src=%s dst=%s seq=%s ack=%s" % (src_port, dst_port, seq, ack)
-        print "fin=%s" % (flags&1)
-        print "syn=%s" % ((flags>>1)&1)
-        print "rst=%s" % ((flags>>2)&1)
-        print "psh=%s" % ((flags>>3)&1)
-        print "ack=%s" % ((flags>>4)&1)
-        print "urg=%s" % ((flags>>5)&1)
-        print "offset=%s" % (flags >> 12)
-        print "*"*10
+        if packet.header["protocol"] == 6:
+            src_port, dst_port, seq, ack, flags, ws = struct.unpack("!HHIIHH", packet.data[0:16])
+            print "*"*10
+            print "tcp: src=%s dst=%s seq=%s ack=%s" % (src_port, dst_port, seq, ack)
+            print "fin=%s" % (flags&1)
+            print "syn=%s" % ((flags>>1)&1)
+            print "rst=%s" % ((flags>>2)&1)
+            print "psh=%s" % ((flags>>3)&1)
+            print "ack=%s" % ((flags>>4)&1)
+            print "urg=%s" % ((flags>>5)&1)
+            print "offset=%s" % (flags >> 12)
+            print "*"*10
         self.sock.send(packet.data)
         print "write to tun %s" % packet
