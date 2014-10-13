@@ -47,14 +47,14 @@ class Packet(object):
         }
 
         if header["ihl"] > 5:
-            socket.recv((header["ihl"]-5)*4)
+            socket.recv((header["ihl"]-5)*4 + offset)
 
         data_size = header["length"]-header["ihl"]*4
 
         data = ""
-        if header_safe:
-            data += raw_header
-        data += socket.recv(data_size)
+        #if header_safe:
+        data += raw_header
+        data += socket.recv(data_size+offset)[offset:]
 
         return Packet(data, header=header)
 
