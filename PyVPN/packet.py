@@ -17,17 +17,16 @@ class Packet(object):
 
     @staticmethod
     def read_from_socket(socket, header_safe=False, tun=False):
-        ip_header_format = "!HHHHHHii"
         if tun:
-            ip_header_format = "!iHHHHHHii"
+            socket.recv(4)
+
+        ip_header_format = "!HHHHHHii"
+
         ip_header_size = struct.calcsize(ip_header_format)
 
         raw_header = socket.recv(ip_header_size)
 
-        if tun:
-            trash, c1, c2, c3, c4, c5, c6, src, dst = struct.unpack(ip_header_format, raw_header)
-        else:
-            c1, c2, c3, c4, c5, c6, src, dst = struct.unpack(ip_header_format, raw_header)
+        c1, c2, c3, c4, c5, c6, src, dst = struct.unpack(ip_header_format, raw_header)
 
 
         header = {
@@ -53,10 +52,7 @@ class Packet(object):
 
         data = ""
         if header_safe:
-            if tun:
-                data += raw_header[4:]
-            else:
-                data += raw_header
+            data += raw_header
         data += socket.recv(data_size)
 
         return Packet(data, header=header)
