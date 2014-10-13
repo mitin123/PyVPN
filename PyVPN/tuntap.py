@@ -42,7 +42,7 @@ class Tun(TunTap):
                 raise TunTapException("can`t set subnet for interface %s" % self.name)
 
     def read_packet(self):
-        packet = Packet.read_from_socket(self.sock, header_safe=True, tun=True)
+        packet = Packet.read_from_tun(self.sock)
         print "read from tun %s" % packet
         return packet
 
