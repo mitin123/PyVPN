@@ -46,7 +46,7 @@ class Tun(TunTap):
         print "read from tun %s" % packet
         return packet
 
-    def write_packet(self, packet)
+    def write_packet(self, packet):
         src_port, dst_port, seq, ack, flags, ws = struct.unpack("!HHIIHH", packet.data[0:16])
         print "*"*10
         print "tcp: src=%s dst=%s seq=%s ack=%s" % (src_port, dst_port, seq, ack)
