@@ -1,5 +1,4 @@
 import os
-from socket import AF_INET, inet_pton
 from gevent import spawn
 
 from tuntap import Tun
@@ -18,9 +17,10 @@ class VPNClient(object):
             exit(-1)
 
         # tunneling connection to vpn server
-        self.net = VPNServerConnection(host=self.config.server["host"], port=self.config.server["port"])
-
-        self.net.sock.send(inet_pton(AF_INET, self.config.ip))
+        # TODO: make some factory for creating instance of encrypted connection,
+        # after create, invoke method for auth handshake by some interface (f.e. .make_auth())
+        # inject auth and encrypt objects
+        self.net = VPNServerConnection(host=self.config.server["host"], port=self.config.server["port"], config=self.config)
 
         self.tt = Tun(name="tun0")
         self.tt.configure(ip=self.config.ip, mask=self.config.mask)
@@ -35,16 +35,13 @@ class VPNClient(object):
         while True:
             self.net.write_packet(self.tt.read_packet())
 
-    # simple bridge mode, just for testing purposes
-    def start_bridge(self):
-
+    def start(self):
         g1 = spawn(self._forward_data_from_net)
         g2 = spawn(self._forward_data_from_tun)
-
         g1.join()
         g2.join()
 
 
 if __name__ == "__main__":
     client = VPNClient()
-    client.start_bridge()
+    client.start()

@@ -1,4 +1,3 @@
-import struct
 from gevent import spawn, socket
 
 from utils import create_logger
@@ -17,29 +16,16 @@ class VPNServer(object):
 
         self.connections = {}
 
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    def handle(self, conn, addr):
         try:
-            s.bind((self.config.server["host"], self.config.server["port"]))
-        except:
-            print "socket error"
-            exit(1)
-
-        s.listen(1024)
-
-        while True:
-            conn, addr = s.accept()
-
             client_connection = VPNClientConnection(conn)
+        except: # handle case if auth error or something failed
+            pass
 
-            ip = struct.unpack("i", conn.recv(4))[0]
+        self.connections[client_connection.ip] = client_connection
 
-            print "Client connected by", addr, ip
+        print "Client connected by", addr, client_connection.ip
 
-            self.connections[ip] = client_connection
-
-            spawn(self.handle, client_connection)
-
-    def handle(self, client_connection):
         while True:
             packet = client_connection.read_packet()
             dst_ip = packet.header["dst"]
@@ -49,11 +35,21 @@ class VPNServer(object):
             else:
                 print "!!! client for this packet not found"
 
-            #client_connection.write_packet(Packet("Good By!"))
-
-
     def serve_forever(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.bind((self.config.server["host"], self.config.server["port"]))
+        except:
+            print "socket error"
+            exit(1)
+        s.listen(1024)
+
+        print "start server"
+
+        while True:
+            conn, addr = s.accept()
+            spawn(self.handle, conn, addr)
 
 if __name__ == "__main__":
     server = VPNServer()
+    server.serve_forever()
