@@ -8,3 +8,7 @@ def create_logger(name="default", file="./app.log", level=logging.WARNING):
     logger.addHandler(hdlr) 
     logger.setLevel(level)
     return logger
+
+
+def address_in_subnet(subnet, address):
+    pass

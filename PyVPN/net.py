@@ -34,13 +34,23 @@ class VPNServerConnection(VPNConnection):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((self.host, self.port))
 
+        if "ip" not in config:
+            config["ip"] = "0.0.0.0" # server allocate address from pull (like simple dummy DHCP)
+
         self.sock.send(socket.inet_pton(socket.AF_INET, config.ip))
         self.sock.send(struct.puck("HH", [config.auth_no, config.crypto_no]))
+
+        config["ip"] = struct.unpuck("i", self.sock.recv(32))[0] # ip
 
 # connection with client
 class VPNClientConnection(VPNConnection):
     def __init__(self, sock):
         self.sock = sock
         self.ip, self.auth_no, self.crypto_no = struct.unpack("iHH", self.sock.recv(8))
+
+        if self.ip == 0:
+            self.ip = "10.0.0.17" # !!! allocate address
+
+        self.sock.send(struct.puck("i", [self.ip]))
 
         self.crypto = crypto_pool.get(self.crypto_no)

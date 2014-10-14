@@ -15,6 +15,7 @@ class VPNServer(object):
             exit(-1)
 
         self.connections = {}
+        self.address_pool = {}
 
     def handle(self, conn, addr):
         try:
