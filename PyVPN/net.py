@@ -47,7 +47,7 @@ class VPNServerConnection(VPNConnection):
         self.crypto_no = self.app.config.crypto_no
         self.crypto = crypto_pool.get(self.app.config.crypto_no)
 
-        self.app.config["ip"] = inet_ntop(struct.unpack("i", self.sock.recv(4))[0]) # ip
+        self.app.config["ip"] = inet_ntop(socket.AF_INET, struct.unpack("i", self.sock.recv(4))[0]) # ip
 
 # connection with client
 class VPNClientConnection(VPNConnection):
