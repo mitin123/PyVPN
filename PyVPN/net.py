@@ -37,8 +37,7 @@ class VPNServerConnection(VPNConnection):
         if "ip" not in config:
             config["ip"] = "0.0.0.0" # server allocate address from pull (like simple dummy DHCP)
 
-        self.sock.send(socket.inet_pton(socket.AF_INET, config.ip))
-        self.sock.send(struct.puck("HH", [config.auth_no, config.crypto_no]))
+        self.sock.send(struct.puck("iHH", [socket.inet_pton(socket.AF_INET, config.ip), config.auth_no, config.crypto_no]))
 
         self.crypto_no = config.crypto_no
         self.crypto = crypto_pool.get(config.crypto_no)

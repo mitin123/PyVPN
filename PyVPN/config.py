@@ -34,6 +34,13 @@ class VPNConfig(object):
         else:
             return super(VPNConfig, self).__getattr__(attr)
 
+    def __getitem__(self, item):
+        if item in self.config:
+            return self.config[item]
+
+    def __iter__(self):
+        return self.config
+
 class VPNClientConfig(VPNConfig):
     __default_config_file = "/etc/pyvpn/client.conf"
     __conf_validators = [
