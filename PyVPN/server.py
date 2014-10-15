@@ -27,7 +27,7 @@ class VPNServer(object):
 
         self.connections[client_connection.ip] = client_connection
 
-        print "Client connected by", addr, client_connection.ip
+        print "Client connected by", addr
 
         while True:
             packet = client_connection.read_packet()
