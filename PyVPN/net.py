@@ -28,27 +28,34 @@ class VPNConnection(object):
 
 # connection with server
 class VPNServerConnection(VPNConnection):
-    def __init__(self, host=None, port=None, config=None):
-        self.host, self.port = host, port
+    def __init__(self, host=None, port=None, app=None):
+        self.host, self.port, self.app = host, port, app
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((self.host, self.port))
 
-        if "ip" not in config:
-            config["ip"] = "0.0.0.0" # server allocate address from pull (like simple dummy DHCP)
+        if "ip" not in self.app.config:
+            self.app.config["ip"] = "0.0.0.0" # server allocate address from pull (like simple dummy DHCP)
 
-        self.sock.send(socket.inet_pton(socket.AF_INET, config.ip))
-        self.sock.send(struct.pack("HH", config.auth_no, config.crypto_no))
+        self.make_handshake()
 
-        self.crypto_no = config.crypto_no
-        self.crypto = crypto_pool.get(config.crypto_no)
+    def make_handshake(self):
+        self.sock.send(socket.inet_pton(socket.AF_INET, self.app.config.ip))
+        self.sock.send(struct.pack("HH", self.app.config.auth_no, self.app.config.crypto_no))
 
-        config["ip"] = struct.unpack("i", self.sock.recv(32))[0] # ip
+        self.crypto_no = self.app.config.crypto_no
+        self.crypto = crypto_pool.get(self.app.config.crypto_no)
+
+        self.app.config["ip"] = struct.unpack("i", self.sock.recv(4))[0] # ip
 
 # connection with client
 class VPNClientConnection(VPNConnection):
     def __init__(self, sock):
         self.sock = sock
+
+        self.make_handshake()
+
+    def make_handshake(self):
         self.ip, self.auth_no, self.crypto_no = struct.unpack("iHH", self.sock.recv(8))
 
         if self.ip == 0:
@@ -57,3 +64,4 @@ class VPNClientConnection(VPNConnection):
         self.sock.send(struct.pack("i", [self.ip]))
 
         self.crypto = crypto_pool.get(self.crypto_no)
+

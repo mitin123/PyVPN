@@ -13,15 +13,15 @@ class CryptoPool(object):
 
     def get(self, index):
         if index in self.__classes:
-            new = self.__classes[index].__new__()
+            new = self.__classes[index]()
             if index not in self.__pool:
                 self.__pool[index] = []
-            self.__pool.append(new)
+            self.__pool[index].append(new)
 
         return new
 
 class Crypto(object):
-    def __init__(self, context):
+    def __init__(self, context=None):
         self.context = context
 
     def encrypt(self, data):

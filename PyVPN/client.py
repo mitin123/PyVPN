@@ -31,7 +31,7 @@ class VPNClient(object):
         # TODO: make some factory for creating instance of encrypted connection,
         # after create, invoke method for auth handshake by some interface (f.e. .make_auth())
         # inject auth and encrypt objects
-        self.net = VPNServerConnection(host=self.config.server["host"], port=self.config.server["port"], config=self.config)
+        self.net = VPNServerConnection(host=self.config.server["host"], port=self.config.server["port"], app=self)
 
         self.tt = Tun(name="tun0")
         self.tt.configure(ip=self.config.ip, mask=self.config.mask)
