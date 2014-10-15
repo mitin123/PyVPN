@@ -38,6 +38,9 @@ class VPNConfig(object):
         if item in self.config:
             return self.config[item]
 
+    def __setitem__(self, key, value):
+        self.config[key] = value
+
     def __iter__(self):
         return iter(self.config)
 
