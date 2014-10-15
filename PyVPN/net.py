@@ -1,4 +1,4 @@
-from _socket import inet_pton
+from _socket import inet_pton, inet_ntop
 import struct
 from gevent import socket
 from packet import Packet
@@ -47,7 +47,7 @@ class VPNServerConnection(VPNConnection):
         self.crypto_no = self.app.config.crypto_no
         self.crypto = crypto_pool.get(self.app.config.crypto_no)
 
-        self.app.config["ip"] = struct.unpack("i", self.sock.recv(4))[0] # ip
+        self.app.config["ip"] = inet_ntop(struct.unpack("i", self.sock.recv(4))[0]) # ip
 
 # connection with client
 class VPNClientConnection(VPNConnection):
