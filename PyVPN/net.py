@@ -1,3 +1,4 @@
+from _socket import inet_pton
 import struct
 from gevent import socket
 from packet import Packet
@@ -59,9 +60,9 @@ class VPNClientConnection(VPNConnection):
         self.ip, self.auth_no, self.crypto_no = struct.unpack("iHH", self.sock.recv(8))
 
         if self.ip == 0:
-            self.ip = "10.0.0.17" # !!! allocate address
+            self.ip = inet_pton("10.0.0.17") # !!! allocate address
 
-        self.sock.send(struct.pack("i", [self.ip]))
+        self.sock.send(struct.pack("i", self.ip))
 
         self.crypto = crypto_pool.get(self.crypto_no)
 
