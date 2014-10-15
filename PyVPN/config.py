@@ -39,7 +39,7 @@ class VPNConfig(object):
             return self.config[item]
 
     def __iter__(self):
-        return self.config
+        return iter(self.config)
 
 class VPNClientConfig(VPNConfig):
     __default_config_file = "/etc/pyvpn/client.conf"
