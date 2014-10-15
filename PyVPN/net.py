@@ -58,7 +58,10 @@ class VPNClientConnection(VPNConnection):
         self.make_handshake()
 
     def make_handshake(self):
-        self.ip, self.auth_no, self.crypto_no = struct.unpack("iHH", self.sock.recv(8))
+        data = self.sock.recv(8)
+        if len(data) < 8:
+            data += self.sock.recv(8 - len(data))
+        self.ip, self.auth_no, self.crypto_no = struct.unpack("iHH", data)
 
         if self.ip == 0:
             self.ip = inet_pton("10.0.0.17") # !!! allocate address
