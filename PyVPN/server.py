@@ -3,6 +3,7 @@ from gevent import spawn, socket
 from utils import create_logger
 from config import VPNServerConfig, InvalidConfigException
 from net import VPNClientConnection
+from vpnexcept import VPNException
 
 class VPNServer(object):
     def __init__(self):
@@ -18,10 +19,11 @@ class VPNServer(object):
         self.address_pool = {}
 
     def handle(self, conn, addr):
+        client_connection = None
         try:
             client_connection = VPNClientConnection(conn)
         except: # handle case if auth error or something failed
-            pass
+            raise VPNException("create connection failed")
 
         self.connections[client_connection.ip] = client_connection
 
