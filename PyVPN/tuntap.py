@@ -23,7 +23,7 @@ class TunTap(object):
     pass
 
 class Tun(TunTap):
-    def __init__(self, name="tun0"):
+    def __init__(self, name="tun1"):
         self.name = name
         self.sock = self.open() # support socket interface recv and send
     
