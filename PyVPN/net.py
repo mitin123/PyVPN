@@ -1,13 +1,13 @@
-from _socket import inet_pton, inet_ntoa
+from socket import inet_pton, inet_ntoa
 
 import struct
 from gevent import socket
 from packet import Packet
+from vpnexcept import VPNException
 
-from crypto import crypto_pool
 
 class VPNConnection(object):
-    def __init__(self, crypto=None, auth=None):
+    def __init__(self):
         raise NotImplementedError()
 
     def read_packet(self):
@@ -21,17 +21,27 @@ class VPNConnection(object):
         print "write to net %s" % packet
 
     def encrypt_packet(self, packet):
-        packet.data = self.crypto.encrypt(packet.data)
+        packet.data = self.app.crypto.encrypt(packet.data)
         return packet
 
     def decrypt_packet(self, packet):
         packet.data = self.crypto.decrypt(packet.data)
         return packet
 
+    def _readn(self, n):
+        data = self.sock.recv(n)
+        while len(data) < n:
+            data += self.sock.recv(n - len(data))
+        return data
+
+    def _write(self,data):
+        self.sock.send(data)
+
 # connection with server
 class VPNServerConnection(VPNConnection):
     def __init__(self, host=None, port=None, app=None):
         self.host, self.port, self.app = host, port, app
+        self.logger = self.app.logger
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((self.host, self.port))
@@ -42,31 +52,48 @@ class VPNServerConnection(VPNConnection):
         self.make_handshake()
 
     def make_handshake(self):
-        self.sock.send(socket.inet_pton(socket.AF_INET, self.app.config.ip))
-        self.sock.send(struct.pack("HH", self.app.config.auth_no, self.app.config.crypto_no))
+        self.auth_no = struct.unpack("=H", self._readn(2))[0] # RECEIVE AUTH_NO
 
-        self.crypto_no = self.app.config.crypto_no
-        self.crypto = crypto_pool.get(self.app.config.crypto_no)
+        auth = self.app.auth_pool.get(self.auth_no)
+        if auth is None:
+            raise VPNException("auth method %s not registered in auth_pool" % self.auth_no)
+        try:
+            auth.client_side_auth(self.sock) # make auth
+        except:
+            raise VPNException("Authentication failed (auth=%s)" % auth._index)
 
-        self.app.config["ip"] = inet_ntoa(self.sock.recv(4)) # ip
+        ip = socket.inet_pton(socket.AF_INET, self.app.config.ip)
+        # send ip, crypto
+        self._write(ip)
+        self._write(struct.pack("=H",self.app.config.crypto_no))
+
+        self.app.config["ip"] = inet_ntoa(self._readn(4)) # recv real ip
 
 # connection with client
 class VPNClientConnection(VPNConnection):
-    def __init__(self, sock):
+    def __init__(self, sock, app):
         self.sock = sock
+        self.app = app
+        self.logger = self.app.logger
 
         self.make_handshake()
 
     def make_handshake(self):
-        data = self.sock.recv(8)
-        if len(data) < 8:
-            data += self.sock.recv(8 - len(data))
-        self.ip, self.auth_no, self.crypto_no = struct.unpack("iHH", data)
+        self._write(struct.pack("=H", self.app.config.auth_no)) # SEND AUTH_NO
+
+        self.logger.info("start auth for %s by auth_type=%s" % (self.sock, self.app.auth._index))
+        if not self.app.auth.server_side_auth(self.sock): # make auth
+            raise VPNException("failed auth for %s by auth_type=%s" % (self.sock, self.app.auth._index))
+        self.logger.info("successful auth for %s by auth_type=%s" % (self.sock, self.app.auth._index))
+
+        self.ip, self.crypto_no = struct.unpack("=iH", self._readn(6)) # recv ip, crypto
+
+        self.crypto = self.app.crypto_pool.get(self.crypto_no)
 
         if self.ip == 0:
             self.ip = inet_pton(socket.AF_INET, "10.0.0.17") # !!! allocate address
+        else:
+            self.ip = struct.pack("i", self.ip)
 
-        self.sock.send(self.ip)
-
-        self.crypto = crypto_pool.get(self.crypto_no)
-
+        self._write(self.ip) # send real ip
+        self.logger.info("ip address %s was assigned to client %s" % (inet_ntoa(self.ip), self.sock))

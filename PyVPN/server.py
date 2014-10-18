@@ -5,6 +5,9 @@ from config import VPNServerConfig, InvalidConfigException
 from net import VPNClientConnection
 from vpnexcept import VPNException
 
+from crypto import CryptoPool
+from auth import AuthPool
+
 class VPNServer(object):
     def __init__(self):
         self.logger = create_logger(name="PyVPN Server Logger", file="./server.log")
@@ -15,15 +18,21 @@ class VPNServer(object):
             self.logger.error("loading config failed: %s" % e.msg)
             exit(-1)
 
+        self.crypto_pool = CryptoPool(self)
+        self.auth_pool = AuthPool(self)
+        self.auth = self.auth_pool.get(self.config.auth_no)
+
         self.connections = {}
         self.address_pool = {}
 
     def handle(self, conn, addr):
         client_connection = None
         try:
-            client_connection = VPNClientConnection(conn)
-        except: # handle case if auth error or something failed
-            raise VPNException("create connection failed")
+            client_connection = VPNClientConnection(conn, self)
+        except VPNException as e: # handle case if auth error or something failed
+            self.logger.error(e)
+            conn.close()
+            return
 
         self.connections[client_connection.ip] = client_connection
 
