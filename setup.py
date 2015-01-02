@@ -13,7 +13,7 @@ setup(name='PyVPN',
       version='1.0',
       description='Implementation of VPN client for PyVPN server',
       packages = packages,
-      package_dir = packages,
+      package_dir = {'PyVPN': 'src'},
       data_files=[
             (
                 "/etc/pyvpn",

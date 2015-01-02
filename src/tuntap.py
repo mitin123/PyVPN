@@ -3,21 +3,20 @@ import fcntl
 import struct
 
 from subprocess import call
-from socket import ntohs
-from gevent.os import tp_read, tp_write
+from socket import *
 
 from vpnexcept import VPNException
 from packet import Packet
 
 from adapters import FileToSocketAdapter
-from  nonblock import NonblockFileWrapper
+from nonblock import NonblockFileWrapper
 
 class TunTapException(VPNException):
     pass
 
 TUNSETIFF = 0x400454ca
+SIOCSIFADDR = 0x8916
 IFF_TUN   = 0x0001
-IFF_TAP   = 0x0002
 
 class TunTap(object):
     pass
@@ -28,11 +27,10 @@ class Tun(TunTap):
         self.sock = self.open() # support socket interface recv and send
     
     def open(self):
-        TUNMODE = IFF_TUN
-        f = os.open("/dev/net/tun", os.O_RDWR)
-        ifs = fcntl.ioctl(f, TUNSETIFF, struct.pack("16sH", self.name, TUNMODE))
+        self.fd = os.open("/dev/net/tun", os.O_RDWR)
+        ifs = fcntl.ioctl(self.fd, TUNSETIFF, struct.pack("16sH", self.name, IFF_TUN))
         self.ifname = ifs[:16].strip("\x00")
-        return FileToSocketAdapter(NonblockFileWrapper(f))
+        return FileToSocketAdapter(NonblockFileWrapper(self.fd))
 
     def configure(self, ip=None, mask=None):
         if ip is not None and mask is not None:
@@ -42,7 +40,7 @@ class Tun(TunTap):
                 raise TunTapException("can`t set subnet for interface %s" % self.name)
 
     def read_packet(self):
-        packet = Packet.read_from_tun(self.sock)
+        packet = Packet.read_from_tun(self)
         print "read from tun %s" % packet
         return packet
 

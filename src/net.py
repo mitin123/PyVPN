@@ -5,13 +5,20 @@ from gevent import socket
 from packet import Packet
 from vpnexcept import VPNException
 
+CONTENT_TYPES = {
+    "packet_data": 1,
+    "update_session": 1
+}
 
 class VPNConnection(object):
     def __init__(self):
-        raise NotImplementedError()
+        raise NotImplementedError
+
+    def make_handshake(self):
+        raise NotImplementedError
 
     def read_packet(self):
-        packet = Packet.read_from_socket(self.sock)
+        packet = Packet.read_from_socket(self)
         print "read from net %s" % packet
         return self.decrypt_packet(packet)
 
@@ -36,6 +43,9 @@ class VPNConnection(object):
 
     def _write(self,data):
         self.sock.send(data)
+
+    def close(self):
+        self.sock.close()
 
 # connection with server
 class VPNServerConnection(VPNConnection):

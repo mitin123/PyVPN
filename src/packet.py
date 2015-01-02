@@ -42,25 +42,28 @@ class Packet(object):
 
         return header
 
+    """
     @staticmethod
-    def read_from_tun(tun_socket, packet_size=65000):
-        raw_data = tun_socket.recv(packet_size)
+    def read_from(dev, *args, **kwargs):
+        if isinstance(dev, Tun):
+            return Packet.read_from_tun(dev, *args, **kwargs)
+        elif isinstance(dev, VPNConnection):
+            return Packet.read_from_socket(dev, *args, **kwargs)
+    """
+
+    @staticmethod
+    def read_from_tun(dev, packet_size=65000):
+        raw_data = dev.sock.recv(packet_size)
         header = Packet.__retrieve_ipv4_header(raw_data)
         return Packet(raw_data, header=header)
 
     @staticmethod
-    def read_from_socket(socket):
-        ip_header_size = struct.calcsize(Packet.IP_HEADER_FORMAT)
-        raw_header = socket.recv(ip_header_size)
-
+    def read_from_socket(dev):
+        raw_header = dev._readn(struct.calcsize(Packet.IP_HEADER_FORMAT))
         header = Packet.__retrieve_ipv4_header(raw_header)
-
         if header["ihl"] > 5:
-            socket.recv((header["ihl"]-5)*4)
-
+            dev._readn((header["ihl"]-5)*4)
         data_size = header["length"]-header["ihl"]*4
-
-        data = raw_header + socket.recv(data_size)
+        data = raw_header + dev._readn(data_size)
 
         return Packet(data, header=header)
-
