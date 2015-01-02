@@ -17,16 +17,12 @@ class VPNConfig(object):
             with open(self.__path) as config_file:
                 self.config = yaml.load(config_file)
         except Exception:
-            ex = InvalidConfigException()
-            ex.msg = "configuration file reading failed"
-            raise ex
+            raise InvalidConfigException("configuration file reading failed")
 
     def validate(self):
         for validator in self.__class__.__conf_validators:
             if not validator(self.config):
-                ex = InvalidConfigException()
-                ex.msg = "wtf"
-                raise ex
+                raise InvalidConfigException("validation failed")
 
     def __getattr__(self, attr):
         if attr in self.config:
