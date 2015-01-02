@@ -36,8 +36,8 @@ class Packet(object):
             "ttl" : c5 >> 8,
             "protocol" : c5 & 255,
             "checksum" : c6,
-            "src": htonl(src),
-            "dst" : htonl(dst),
+            "src": src,
+            "dst" : dst,
         }
 
         return header
