@@ -36,8 +36,8 @@ class Packet(object):
             "ttl" : c5 >> 8,
             "protocol" : c5 & 255,
             "checksum" : c6,
-            "src": src,
-            "dst" : dst,
+            "src": struct.pack("i", src),
+            "dst" : struct.pack("i", dst),
         }
 
         return header

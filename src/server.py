@@ -26,6 +26,7 @@ class VPNServer(object):
         self.address_pool = {}
 
     def handle_connection(self, conn, addr):
+        client_connection = None
         try:
             client_connection = VPNClientConnection(conn, self)
             self.connections[client_connection.ip] = client_connection
@@ -37,11 +38,13 @@ class VPNServer(object):
             return
 
         print addr
+        print client_connection.__dict__
         self.logger.info("Client connected by %s:%s" % addr)
 
         while True:
             packet = client_connection.read_packet()
             dst_ip = packet.header["dst"]
+            print "dst_ip =", dst_ip
             if dst_ip in self.connections:
                 self.connections[dst_ip].write_packet(packet)
                 print "packet was sent"
