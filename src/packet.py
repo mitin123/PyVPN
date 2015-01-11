@@ -1,5 +1,5 @@
 import struct
-from gevent.socket import htonl, inet_ntop, AF_INET
+from gevent.socket import ntohl, inet_ntop, AF_INET
 
 class Packet(object):
     def __init__(self, data, header=None):
@@ -15,7 +15,7 @@ class Packet(object):
     def __repr__(self):
         return repr(self.header)
 
-    IP_HEADER_FORMAT = "!iHHHHHHii"
+    IP_HEADER_FORMAT = "!iHHHHHH4s4s"
 
     @staticmethod
     def __retrieve_ipv4_header(raw_data):
@@ -36,8 +36,8 @@ class Packet(object):
             "ttl" : c5 >> 8,
             "protocol" : c5 & 255,
             "checksum" : c6,
-            "src": struct.pack("i", src),
-            "dst" : struct.pack("i", dst),
+            "src": src,
+            "dst" : dst,
         }
 
         return header

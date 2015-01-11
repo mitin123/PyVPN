@@ -96,14 +96,12 @@ class VPNClientConnection(VPNConnection):
             raise VPNException("failed auth for %s by auth_type=%s" % (self.sock, self.app.auth._index))
         self.logger.info("successful auth for %s by auth_type=%s" % (self.sock, self.app.auth._index))
 
-        self.ip, self.crypto_no = struct.unpack("=iH", self._readn(6)) # recv ip, crypto
+        self.ip, self.crypto_no = struct.unpack("=4sH", self._readn(6)) # recv ip, crypto
 
         self.crypto = self.app.crypto_pool.get(self.crypto_no)
 
         if self.ip == 0:
             self.ip = inet_pton(socket.AF_INET, "10.0.0.17") # !!! allocate address
-        else:
-            self.ip = struct.pack("i", self.ip)
 
         self._write(self.ip) # send real ip
         self.logger.info("ip address %s was assigned to client %s" % (inet_ntoa(self.ip), self.sock))
