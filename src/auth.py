@@ -1,27 +1,22 @@
 #-*- coding: utf8 -*-
 
-__author__ = 'amitin'
+from vpnexcept import VPNException
 
 class AuthPool(object):
-    def __init__(self, app):
-        self.app = app
-        self.logger = app.logger
+    def __init__(self):
         self.__classes = {}
-
-        self.register(NoAuth)
-        self.register(DummyAuth)
 
     def register(self, auth_cls):
         if hasattr(auth_cls, "_index"):
             self.__classes[auth_cls._index] = auth_cls
 
-    def get(self, index):
-        return self.__classes[index](app=self.app)
+    def alloc(self, index):
+        if index not in self.__classes:
+            raise VPNException("auth method %s not registered in auth_pool" % index)
+
+        return self.__classes[index]()
 
 class Auth(object):
-    def __init__(self, app=None):
-        self.app = app
-
     def client_side_auth(self, sock):
         raise NotImplementedError()
 
@@ -37,7 +32,6 @@ class NoAuth(Auth):
     def server_side_auth(self, sock):
         return True
 
-
 import struct
 # return true, if client send value 42
 class DummyAuth(Auth):
@@ -49,3 +43,8 @@ class DummyAuth(Auth):
     def server_side_auth(self, sock):
         res = struct.unpack("=H", sock.recv(struct.calcsize("=H")))[0]
         return res == 42
+
+auth_pool = AuthPool()
+
+auth_pool.register(NoAuth)
+auth_pool.register(DummyAuth)

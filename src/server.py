@@ -18,10 +18,6 @@ class VPNServer(object):
 
         self.config = VPNServerConfig(path_to_config="./server.conf")
 
-        self.crypto_pool = CryptoPool(self)
-        self.auth_pool = AuthPool(self)
-        self.auth = self.auth_pool.get(self.config.auth_no)
-
         self.connections = {}
         self.address_pool = {}
 
@@ -42,9 +38,11 @@ class VPNServer(object):
         self.logger.info("Client connected by %s:%s" % addr)
 
         while True:
+            if client_connection.session_has_expired():
+                client_connection.update_session_key()
+
             packet = client_connection.read_packet()
             dst_ip = packet.header["dst"]
-            print "dst_ip =", dst_ip
             if dst_ip in self.connections:
                 self.connections[dst_ip].write_packet(packet)
                 print "packet was sent"
@@ -59,7 +57,7 @@ class VPNServer(object):
     def start(self):
         listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        listen_socket.bind((self.config.server["host"], self.config.server["port"]))
+        listen_socket.bind(("0.0.0.0", self.config.port))
 
         listen_socket.listen(1024)
 
@@ -74,8 +72,8 @@ if __name__ == "__main__":
     try:
         server = VPNServer()
     except Exception as e:
-        server_logger.error("init server failed: %s" % e.msg)
         traceback.print_exc()
+        server_logger.error("init server failed: %s" % e.msg)
         exit(-1)
 
     server.start()

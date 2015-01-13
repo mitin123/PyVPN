@@ -10,6 +10,7 @@ class VPNConfig(object):
     def __init__(self, path_to_config=None):
         self.__path = path_to_config or self.__class__.__default_config_file
         self.read_config()
+        self.check()
         #self.validate()
 
     def read_config(self):
@@ -46,6 +47,9 @@ class VPNClientConfig(VPNConfig):
         lambda c: "subnet" in c,
         lambda c: "netmask" in c,
     ]
+    def check(self):
+        if "ip" not in self.config:
+            self.config["ip"] = "0.0.0.0" # for dynamically allocation
 
 
 class VPNServerConfig(VPNConfig):
@@ -54,3 +58,5 @@ class VPNServerConfig(VPNConfig):
         lambda c: "subnet" in c,
         lambda c: "netmask" in c,
     ]
+    def check(self):
+        pass

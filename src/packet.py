@@ -1,10 +1,15 @@
 import struct
 from gevent.socket import ntohl, inet_ntop, AF_INET
 
+IP_HEADER_FORMAT = "!iHHHHHH4s4s"
+IP_HEADER_SIZE = struct.calcsize(IP_HEADER_FORMAT)
+
+
 class Packet(object):
-    def __init__(self, data, header=None):
+    def __init__(self, data, header=None, encrypted=False):
         self.data = data
         self.header = header
+        self.encrypted = encrypted
 
     def dst_asstring(self):
         return inet_ntop(AF_INET, struct.pack("i", self.header["dst"]))
@@ -15,14 +20,10 @@ class Packet(object):
     def __repr__(self):
         return repr(self.header)
 
-    IP_HEADER_FORMAT = "!iHHHHHH4s4s"
-
     @staticmethod
     def __retrieve_ipv4_header(raw_data):
-
-        ip_header_size = struct.calcsize(Packet.IP_HEADER_FORMAT)
-        raw_header = raw_data[:ip_header_size]
-        trash, c1, c2, c3, c4, c5, c6, src, dst = struct.unpack(Packet.IP_HEADER_FORMAT, raw_header)
+        raw_header = raw_data[:IP_HEADER_SIZE]
+        trash, c1, c2, c3, c4, c5, c6, src, dst = struct.unpack(IP_HEADER_FORMAT, raw_header)
 
         header = {
             "ver" : c1 >> 12,
@@ -51,19 +52,31 @@ class Packet(object):
             return Packet.read_from_socket(dev, *args, **kwargs)
     """
 
+    def decrypt(self, decrypt_func):
+        if self.encrypted:
+            self.data = decrypt_func(self.data)
+            self.header = Packet.__retrieve_ipv4_header(self.data)
+            self.encrypted = False
+
+    def encrypt(self, encrypt_func):
+        if not self.encrypted:
+            self.data = encrypt_func(self.data)
+            self.encrypted = True
+
     @staticmethod
     def read_from_tun(dev, packet_size=65000):
         raw_data = dev.sock.recv(packet_size)
         header = Packet.__retrieve_ipv4_header(raw_data)
         return Packet(raw_data, header=header)
 
-    @staticmethod
-    def read_from_socket(dev):
-        raw_header = dev._readn(struct.calcsize(Packet.IP_HEADER_FORMAT))
-        header = Packet.__retrieve_ipv4_header(raw_header)
-        if header["ihl"] > 5:
-            dev._readn((header["ihl"]-5)*4)
-        data_size = header["length"]-header["ihl"]*4
-        data = raw_header + dev._readn(data_size)
 
+    @staticmethod
+    def read_from_socket(conn, size, decrypt_func=None):
+        data = conn._readn(size)
+        if decrypt_func is not None:
+            data = decrypt_func(data)
+        header = Packet.__retrieve_ipv4_header(data)
         return Packet(data, header=header)
+
+    def write_to_socket(self, sock):
+        sock.send(self.data)

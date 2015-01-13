@@ -20,11 +20,6 @@ class VPNClient(object):
 
         self.config = VPNClientConfig(path_to_config="./client.conf")
 
-        self.crypto_pool = CryptoPool(self)
-        self.auth_pool = AuthPool(self)
-
-        self.crypto = self.crypto_pool.get(self.config.crypto_no)
-
     def _forward_data_from_net(self):
         self.logger.info("start forwarder from net")
         while True:

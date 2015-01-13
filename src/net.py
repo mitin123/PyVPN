@@ -1,39 +1,70 @@
 from socket import inet_pton, inet_ntoa
 
 import struct
+import time
 from gevent import socket
 from packet import Packet
+from crypto import crypto_pool
+from auth import auth_pool
 from vpnexcept import VPNException
 
 CONTENT_TYPES = {
     "packet_data": 1,
-    "update_session": 1
+    "update_session": 2
 }
+
+class KeyExchangeProtocol(object):
+    """
+    :returns session key
+    """
+    def server_side(self):
+        raise NotImplementedError
+    """
+    :returns session key
+    """
+    def client_side(self):
+        raise NotImplementedError
+    """
+    :returns lifetime for key in seconds
+    """
+    def get_session_period(self):
+        raise NotImplementedError
+
+
+class DiffieHellman(KeyExchangeProtocol):
+    def client_side(self):
+        return "hello"
+
+    def server_side(self):
+        return "hello"
+
+    def get_session_period(self):
+        return 15
+
 
 class VPNConnection(object):
     def __init__(self):
-        raise NotImplementedError
+        self.exchange_key_protocol = DiffieHellman()
 
     def make_handshake(self):
         raise NotImplementedError
 
     def read_packet(self):
-        packet = Packet.read_from_socket(self)
-        print "read from net %s" % packet
-        return self.decrypt_packet(packet)
+        type = struct.unpack("i", self._readn(4))[0]
+        if type == CONTENT_TYPES["packet_data"]:
+            packet_len = struct.unpack("i", self._readn(4))[0]
+            packet = Packet.read_from_socket(self, packet_len, decrypt_func=self.crypto.decrypt)
+            print "read from net %s" % packet
+            return packet
+        elif type == CONTENT_TYPES["update_session"]:
+            self.update_session_key()
 
     def write_packet(self, packet):
-        encrypted_packet = self.encrypt_packet(packet)
-        self.sock.send(encrypted_packet.data)
+        packet.encrypt(self.crypto.encrypt)
+        self._write(struct.pack("i", CONTENT_TYPES["packet_data"])) # send packet type
+        self._write(struct.pack("i", len(packet.data))) # send packet size
+        packet.write_to_socket(self.sock)
         print "write to net %s" % packet
-
-    def encrypt_packet(self, packet):
-        packet.data = self.app.crypto.encrypt(packet.data)
-        return packet
-
-    def decrypt_packet(self, packet):
-        packet.data = self.crypto.decrypt(packet.data)
-        return packet
 
     def _readn(self, n):
         data = self.sock.recv(n)
@@ -50,8 +81,12 @@ class VPNConnection(object):
 # connection with server
 class VPNServerConnection(VPNConnection):
     def __init__(self, host=None, port=None, app=None):
+        super(VPNServerConnection, self).__init__()
+
         self.host, self.port, self.app = host, port, app
         self.logger = self.app.logger
+
+        self.crypto = crypto_pool.alloc(self.app.config.crypto_no)
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((self.host, self.port))
@@ -64,9 +99,8 @@ class VPNServerConnection(VPNConnection):
     def make_handshake(self):
         self.auth_no = struct.unpack("=H", self._readn(2))[0] # RECEIVE AUTH_NO
 
-        auth = self.app.auth_pool.get(self.auth_no)
-        if auth is None:
-            raise VPNException("auth method %s not registered in auth_pool" % self.auth_no)
+        auth = auth_pool.alloc(self.auth_no)
+
         try:
             auth.client_side_auth(self.sock) # make auth
         except:
@@ -75,33 +109,61 @@ class VPNServerConnection(VPNConnection):
         ip = socket.inet_pton(socket.AF_INET, self.app.config.ip)
         # send ip, crypto
         self._write(ip)
-        self._write(struct.pack("=H",self.app.config.crypto_no))
+        self._write(struct.pack("=H", self.app.config.crypto_no))
 
         self.app.config["ip"] = inet_ntoa(self._readn(4)) # recv real ip
+
+    def update_session_key(self):
+        self.session_key = self.exchange_key_protocol.client_side()
+        print "new session key", self.session_key
+
 
 # connection with client
 class VPNClientConnection(VPNConnection):
     def __init__(self, sock, app):
+        super(VPNClientConnection, self).__init__()
+
         self.sock = sock
         self.app = app
         self.logger = self.app.logger
 
+        self.auth = auth_pool.alloc(self.app.config.auth_no)
+
         self.make_handshake()
+
+        self.update_session_key()
 
     def make_handshake(self):
         self._write(struct.pack("=H", self.app.config.auth_no)) # SEND AUTH_NO
 
         self.logger.info("start auth for %s by auth_type=%s" % (self.sock, self.app.auth._index))
-        if not self.app.auth.server_side_auth(self.sock): # make auth
+
+        if not self.auth.server_side_auth(self.sock): # make auth
             raise VPNException("failed auth for %s by auth_type=%s" % (self.sock, self.app.auth._index))
         self.logger.info("successful auth for %s by auth_type=%s" % (self.sock, self.app.auth._index))
 
-        self.ip, self.crypto_no = struct.unpack("=4sH", self._readn(6)) # recv ip, crypto
+        self.ip, self.crypto_no = struct.unpack("4sH", self._readn(6))
 
-        self.crypto = self.app.crypto_pool.get(self.crypto_no)
+        self.crypto = crypto_pool.alloc(self.crypto_no)
 
-        if self.ip == 0:
+        if self.ip == '\x00\x00\x00\x00':
             self.ip = inet_pton(socket.AF_INET, "10.0.0.17") # !!! allocate address
+        elif self.ip in self.app.connections:
+            ip_str = ".".join([str(ord(i)) for i in self.ip])
+            raise VPNException("ip address %s already allocated" % ip_str)
+
+        if self.crypto is None:
+            raise VPNException("crypto with index %s not found" % self.crypto_no)
 
         self._write(self.ip) # send real ip
         self.logger.info("ip address %s was assigned to client %s" % (inet_ntoa(self.ip), self.sock))
+
+    def update_session_key(self):
+        self._write(struct.pack("i", CONTENT_TYPES["update_session"]))
+        self.session_key = self.exchange_key_protocol.server_side()
+        self.last_update_session_key_time = time.time()
+
+    def session_has_expired(self):
+        expiry_time = self.last_update_session_key_time + self.exchange_key_protocol.get_session_period()
+        return time.time() > expiry_time
+
