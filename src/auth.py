@@ -1,48 +1,52 @@
 #-*- coding: utf8 -*-
 
+from crypto_protocol import CryptoProtocol
+from utils import AbstractPool
 from vpnexcept import VPNException
 
-class AuthPool(object):
+class AuthPool(AbstractPool):
+
+    def not_found(self, index):
+        raise VPNException("auth method %s not registered in auth_pool" % index)
+
+class Auth(CryptoProtocol):
+
     def __init__(self):
-        self.__classes = {}
+        # TUDO: must be initialized
+        self.public_key = None
+        self.private_key = None
+        if hasattr(self, "init"):
+            self.init()
 
-    def register(self, auth_cls):
-        if hasattr(auth_cls, "_index"):
-            self.__classes[auth_cls._index] = auth_cls
-
-    def alloc(self, index):
-        if index not in self.__classes:
-            raise VPNException("auth method %s not registered in auth_pool" % index)
-
-        return self.__classes[index]()
-
-class Auth(object):
-    def client_side_auth(self, sock):
+    def client_side(self, sock):
         raise NotImplementedError()
 
-    def server_side_auth(self, sock):
+    def server_side(self, sock):
         raise NotImplementedError()
 
 class NoAuth(Auth):
+
     _index = 1
 
-    def client_side_auth(self, sock):
+    def client_side(self, sock):
         pass
 
-    def server_side_auth(self, sock):
+    def server_side(self, sock):
         return True
 
 import struct
 # return true, if client send value 42
 class DummyAuth(Auth):
+
     _index = 2
 
-    def client_side_auth(self, sock):
+    def client_side(self, sock):
         sock.send(struct.pack("=H", 42))
 
-    def server_side_auth(self, sock):
+    def server_side(self, sock):
         res = struct.unpack("=H", sock.recv(struct.calcsize("=H")))[0]
         return res == 42
+
 
 auth_pool = AuthPool()
 

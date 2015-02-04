@@ -1,31 +1,31 @@
 from gevent import spawn, socket
-
+from logging import INFO
 from utils import create_logger
-from config import VPNServerConfig, InvalidConfigException
+from config import VPNServerConfig
 from net import VPNClientConnection
-from vpnexcept import VPNException
-
-from crypto import CryptoPool
-from auth import AuthPool
 
 import traceback
 
-server_logger = create_logger(name="PyVPN Server Logger", file="./server.log")
+server_logger = create_logger(name="PyVPN Server Logger", file="./server.log", level=INFO)
 
 class VPNServer(object):
-    def __init__(self):
+    args_config = []
+
+    def __init__(self, **kwargs):
         self.logger = server_logger
+        self.connections = {}
+        self.address_pool = {}
 
         self.config = VPNServerConfig(path_to_config="./server.conf")
 
-        self.connections = {}
-        self.address_pool = {}
+        overrides = ( (k,v) for k,v in kwargs.iteritems() if k in VPNServer.args_config )
+        overrides = dict(overrides)
+        self.config.update(overrides)
 
     def handle_connection(self, conn, addr):
         client_connection = None
         try:
             client_connection = VPNClientConnection(conn, self)
-            self.connections[client_connection.ip] = client_connection
         except Exception as e: # handle case if auth error or something failed
             self.logger.error(e)
             self.logger.error(traceback.format_exc())
@@ -33,11 +33,10 @@ class VPNServer(object):
             conn.close()
             return
 
-        print addr
-        print client_connection.__dict__
         self.logger.info("Client connected by %s:%s" % addr)
+        self.connections[client_connection.ip] = client_connection
 
-        while True:
+        while True: # forwarding loop
             if client_connection.session_has_expired():
                 client_connection.update_session_key()
 
@@ -45,9 +44,6 @@ class VPNServer(object):
             dst_ip = packet.header["dst"]
             if dst_ip in self.connections:
                 self.connections[dst_ip].write_packet(packet)
-                print "packet was sent"
-            else:
-                print "client for packet not found"
 
     def serve_forever(self, listen_socket):
         while True:
@@ -62,10 +58,12 @@ class VPNServer(object):
         listen_socket.listen(1024)
 
         self.logger.info("starting server...")
+
         print "start server"
 
         p = spawn(self.serve_forever, listen_socket)
         p.join()
+
 
 if __name__ == "__main__":
     server = None
@@ -73,7 +71,7 @@ if __name__ == "__main__":
         server = VPNServer()
     except Exception as e:
         traceback.print_exc()
-        server_logger.error("init server failed: %s" % e.msg)
+        server_logger.error("init server failed: %s" % e)
         exit(-1)
 
     server.start()

@@ -43,15 +43,6 @@ class Packet(object):
 
         return header
 
-    """
-    @staticmethod
-    def read_from(dev, *args, **kwargs):
-        if isinstance(dev, Tun):
-            return Packet.read_from_tun(dev, *args, **kwargs)
-        elif isinstance(dev, VPNConnection):
-            return Packet.read_from_socket(dev, *args, **kwargs)
-    """
-
     def decrypt(self, decrypt_func):
         if self.encrypted:
             self.data = decrypt_func(self.data)
@@ -79,4 +70,4 @@ class Packet(object):
         return Packet(data, header=header)
 
     def write_to_socket(self, sock):
-        sock.send(self.data)
+        sock.sendall(self.data)

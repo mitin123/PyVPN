@@ -6,6 +6,7 @@ from gevent import socket
 from packet import Packet
 from crypto import crypto_pool
 from auth import auth_pool
+from key_exchange import DiffieHellman
 from vpnexcept import VPNException
 
 CONTENT_TYPES = {
@@ -13,38 +14,9 @@ CONTENT_TYPES = {
     "update_session": 2
 }
 
-class KeyExchangeProtocol(object):
-    """
-    :returns session key
-    """
-    def server_side(self):
-        raise NotImplementedError
-    """
-    :returns session key
-    """
-    def client_side(self):
-        raise NotImplementedError
-    """
-    :returns lifetime for key in seconds
-    """
-    def get_session_period(self):
-        raise NotImplementedError
-
-
-class DiffieHellman(KeyExchangeProtocol):
-    def client_side(self):
-        return "hello"
-
-    def server_side(self):
-        return "hello"
-
-    def get_session_period(self):
-        return 15
-
-
 class VPNConnection(object):
     def __init__(self):
-        self.exchange_key_protocol = DiffieHellman()
+        self.key_exchange_protocol = DiffieHellman(self.sock)
 
     def make_handshake(self):
         raise NotImplementedError
@@ -58,6 +30,7 @@ class VPNConnection(object):
             return packet
         elif type == CONTENT_TYPES["update_session"]:
             self.update_session_key()
+            return self.read_packet()
 
     def write_packet(self, packet):
         packet.encrypt(self.crypto.encrypt)
@@ -73,16 +46,17 @@ class VPNConnection(object):
         return data
 
     def _write(self,data):
-        self.sock.send(data)
+        self.sock.sendall(data)
 
     def close(self):
         self.sock.close()
 
+    def is_alive(self):
+        return True
+
 # connection with server
 class VPNServerConnection(VPNConnection):
     def __init__(self, host=None, port=None, app=None):
-        super(VPNServerConnection, self).__init__()
-
         self.host, self.port, self.app = host, port, app
         self.logger = self.app.logger
 
@@ -94,6 +68,8 @@ class VPNServerConnection(VPNConnection):
         if "ip" not in self.app.config:
             self.app.config["ip"] = "0.0.0.0" # server allocate address from pull (like simple dummy DHCP)
 
+        super(VPNServerConnection, self).__init__()
+
         self.make_handshake()
 
     def make_handshake(self):
@@ -102,7 +78,7 @@ class VPNServerConnection(VPNConnection):
         auth = auth_pool.alloc(self.auth_no)
 
         try:
-            auth.client_side_auth(self.sock) # make auth
+            auth.client_side(self.sock) # make auth
         except:
             raise VPNException("Authentication failed (auth=%s)" % auth._index)
 
@@ -114,20 +90,21 @@ class VPNServerConnection(VPNConnection):
         self.app.config["ip"] = inet_ntoa(self._readn(4)) # recv real ip
 
     def update_session_key(self):
-        self.session_key = self.exchange_key_protocol.client_side()
-        print "new session key", self.session_key
+        self.session_key = self.key_exchange_protocol.client_side()
+        #print "new session key", self.session_key
 
 
 # connection with client
 class VPNClientConnection(VPNConnection):
     def __init__(self, sock, app):
-        super(VPNClientConnection, self).__init__()
 
         self.sock = sock
         self.app = app
         self.logger = self.app.logger
 
         self.auth = auth_pool.alloc(self.app.config.auth_no)
+
+        super(VPNClientConnection, self).__init__()
 
         self.make_handshake()
 
@@ -136,11 +113,11 @@ class VPNClientConnection(VPNConnection):
     def make_handshake(self):
         self._write(struct.pack("=H", self.app.config.auth_no)) # SEND AUTH_NO
 
-        self.logger.info("start auth for %s by auth_type=%s" % (self.sock, self.app.auth._index))
+        self.logger.info("start auth for %s by auth_type=%s" % (self.sock, self.auth._index))
 
-        if not self.auth.server_side_auth(self.sock): # make auth
-            raise VPNException("failed auth for %s by auth_type=%s" % (self.sock, self.app.auth._index))
-        self.logger.info("successful auth for %s by auth_type=%s" % (self.sock, self.app.auth._index))
+        if not self.auth.server_side(self.sock): # make auth
+            raise VPNException("failed auth for %s by auth_type=%s" % (self.sock, self.auth._index))
+        self.logger.info("successful auth for %s by auth_type=%s" % (self.sock, self.auth._index))
 
         self.ip, self.crypto_no = struct.unpack("4sH", self._readn(6))
 
@@ -148,9 +125,9 @@ class VPNClientConnection(VPNConnection):
 
         if self.ip == '\x00\x00\x00\x00':
             self.ip = inet_pton(socket.AF_INET, "10.0.0.17") # !!! allocate address
-        elif self.ip in self.app.connections:
+        elif self.ip in self.app.connections and self.app.connections[self.ip].is_alive():
             ip_str = ".".join([str(ord(i)) for i in self.ip])
-            raise VPNException("ip address %s already allocated" % ip_str)
+            # raise VPNException("ip address %s already allocated" % ip_str)
 
         if self.crypto is None:
             raise VPNException("crypto with index %s not found" % self.crypto_no)
@@ -160,10 +137,11 @@ class VPNClientConnection(VPNConnection):
 
     def update_session_key(self):
         self._write(struct.pack("i", CONTENT_TYPES["update_session"]))
-        self.session_key = self.exchange_key_protocol.server_side()
+        self.session_key = self.key_exchange_protocol.server_side()
+        #print "new session key", self.session_key
         self.last_update_session_key_time = time.time()
 
     def session_has_expired(self):
-        expiry_time = self.last_update_session_key_time + self.exchange_key_protocol.get_session_period()
+        expiry_time = self.last_update_session_key_time + self.key_exchange_protocol.get_session_period()
         return time.time() > expiry_time
 
